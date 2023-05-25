@@ -386,3 +386,57 @@ def run_simulations(sim: Poisson_1d, iterations: int):
             break
 
     return time, pop, sim.realtime_limit_reached, sim.grid.cell_spec_population
+
+def test_sim():
+    death_grid = np.linspace(0.0, 5., num=1001)
+    birth_grid = np.linspace(1e-10, 1. - 1e-10, num=1001)
+    init_pop, init_spec = [], []
+    for i in range(100):
+        coord_in_cell = stats.uniform.rvs(0, 5)
+        init_pop.append(coord_in_cell)
+        init_spec.append(0)
+    for i in range(200):
+        coord_in_cell = stats.uniform.rvs(0, 5)
+        init_pop.append(coord_in_cell)
+        init_spec.append(1)
+
+    sim = Poisson_1d(
+        n=2,
+        area_length_x=np.float64(5),
+        dd=np.array([[0.001, 0.0006], [0.001, 0.001]], dtype=np.float64),
+        cell_count_x=10,
+        b=np.array([0.4, 0.4], dtype=np.float64),
+        d=np.array([0.2, 0.2], dtype=np.float64),
+        initial_population_x=init_pop,
+        init_spec_x=init_spec,
+        seed=12345,
+        death_y=np.array([[stats.norm.pdf(death_grid, scale=0.04), stats.norm.pdf(death_grid, scale=0.04)],
+                          [stats.norm.pdf(death_grid, scale=0.04), stats.norm.pdf(death_grid, scale=0.04)]]),
+        birth_inverse_rcdf_y=np.array([stats.norm.ppf(birth_grid, scale=0.04), stats.norm.ppf(birth_grid, scale=0.75)]),
+        death_cutoff_r=np.array([[5, 5], [5, 5]]),
+        birth_cutoff_r=np.array([1, 1]),
+        periodic=True,
+        realtime_limit=np.float_(3600)
+    )
+    simulation_time, population, limit_reached, cell_spec_pop = run_simulations(sim, 100000)
+    plt.figure(figsize=(14, 12))
+    plt.subplot(2, 1, 1)
+    plt.title("ЗАВИСИМОСТЬ ПОПУЛЯЦИИ ОТ ВРЕМЕНИ")
+    plt.plot(np.arange(len(simulation_time)), population)
+    plt.xlabel("СОБЫТИЯ")
+    plt.ylabel("ЧИСЛЕННОСТЬ")
+    plt.legend(['N1', 'N2'])
+
+    plt.subplot(2, 1, 2)
+    area = np.arange(sim.grid.cell_count_x)
+    plt.bar(area, cell_spec_pop[:, 0], label='N1', width=0.7)
+    plt.bar(area, cell_spec_pop[:, 1], bottom=cell_spec_pop[:, 0], label='N2', width=0.7)
+    plt.title("РАССЕЛЕНИЕ ПО ОБЛАСТЯМ")
+    plt.xlabel("ОБЛАСТИ")
+    plt.ylabel("ЧИСЛЕННОСТЬ")
+    plt.legend(loc="upper right")
+
+    plt.show()
+
+
+test_sim()
